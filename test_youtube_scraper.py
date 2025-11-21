@@ -7,6 +7,8 @@ Run this to test the YouTube scraper without needing all environment variables:
 Only requires: YOUTUBE_API_KEY in .env
 """
 
+# just to avoid import errors
+
 import os
 from dotenv import load_dotenv
 from googleapiclient.discovery import build
