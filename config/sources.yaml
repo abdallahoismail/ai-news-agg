@@ -1,0 +1,115 @@
+# AI News Aggregator - Sources Configuration
+# Configure your news sources here
+
+sources:
+  # OpenAI Blog
+  - name: "OpenAI Blog"
+    type: "rss"
+    url: "https://openai.com/blog/rss.xml"
+    active: true
+    config:
+      max_articles: 10
+
+  # Google AI Blog
+  - name: "Google AI Blog"
+    type: "rss"
+    url: "https://blog.google/technology/ai/rss/"
+    active: true
+    config:
+      max_articles: 10
+
+  # DeepMind Blog
+  - name: "Google DeepMind Blog"
+    type: "rss"
+    url: "https://deepmind.google/blog/rss.xml"
+    active: true
+    config:
+      max_articles: 10
+
+  # Anthropic News
+  - name: "Anthropic News"
+    type: "rss"
+    url: "https://www.anthropic.com/news/rss.xml"
+    active: true
+    config:
+      max_articles: 10
+
+  # NVIDIA Blog (AI)
+  - name: "NVIDIA AI Blog"
+    type: "rss"
+    url: "https://blogs.nvidia.com/feed/"
+    active: true
+    config:
+      max_articles: 10
+
+  # Meta AI Blog
+  - name: "Meta AI Blog"
+    type: "rss"
+    url: "https://ai.meta.com/blog/rss/"
+    active: true
+    config:
+      max_articles: 10
+
+  # Microsoft AI Blog
+  - name: "Microsoft AI Blog"
+    type: "rss"
+    url: "https://blogs.microsoft.com/ai/feed/"
+    active: true
+    config:
+      max_articles: 10
+
+  # YouTube Channels
+
+  # OpenAI YouTube Channel
+  - name: "OpenAI YouTube"
+    type: "youtube"
+    url: "https://www.youtube.com/@OpenAI"
+    active: true
+    config:
+      max_videos: 5
+
+  # Google DeepMind YouTube Channel
+  - name: "Google DeepMind YouTube"
+    type: "youtube"
+    url: "https://www.youtube.com/@Google DeepMind"
+    active: true
+    config:
+      max_videos: 5
+
+  # Two Minute Papers (AI Research Coverage)
+  - name: "Two Minute Papers"
+    type: "youtube"
+    url: "https://www.youtube.com/@TwoMinutePapers"
+    active: true
+    config:
+      max_videos: 5
+
+  # Yannic Kilcher (AI Research)
+  - name: "Yannic Kilcher"
+    type: "youtube"
+    url: "https://www.youtube.com/@YannicKilcher"
+    active: true
+    config:
+      max_videos: 3
+
+# Additional sources you can add:
+#
+# - name: "TechCrunch AI"
+#   type: "rss"
+#   url: "https://techcrunch.com/category/artificial-intelligence/feed/"
+#   active: true
+#
+# - name: "The Verge AI"
+#   type: "rss"
+#   url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"
+#   active: true
+#
+# - name: "MIT Technology Review AI"
+#   type: "rss"
+#   url: "https://www.technologyreview.com/topic/artificial-intelligence/feed"
+#   active: true
+#
+# - name: "Hugging Face Blog"
+#   type: "rss"
+#   url: "https://huggingface.co/blog/feed.xml"
+#   active: true

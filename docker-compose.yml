@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai-news-postgres
+    environment:
+      POSTGRES_USER: newsagg
+      POSTGRES_PASSWORD: newsagg_dev_password
+      POSTGRES_DB: ai_news_aggregator
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U newsagg"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: ai-news-app
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://newsagg:newsagg_dev_password@postgres:5432/ai_news_aggregator
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./config:/app/config
+      - ./app:/app/app
+      - ./main.py:/app/main.py
+
+volumes:
+  postgres_data:

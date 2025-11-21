@@ -1,0 +1,53 @@
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: ai-news-db
+    env: docker
+    plan: starter
+    region: oregon
+    databaseName: ai_news_aggregator
+    databaseUser: newsagg
+    ipAllowList: []
+
+  # Cron Job for Daily Digest
+  - type: cron
+    name: ai-news-digest
+    env: docker
+    region: oregon
+    plan: starter
+    schedule: "0 9 * * *"  # Run daily at 9:00 AM UTC
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ai-news-db
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM_EMAIL
+        sync: false
+      - key: SMTP_TO_EMAIL
+        sync: false
+      - key: SMTP_USE_TLS
+        value: "true"
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: AGENT_SYSTEM_PROMPT
+        value: "You are an AI assistant analyzing news and blog posts from the tech industry. Focus on AI/ML developments, new product launches, research breakthroughs, and industry trends. Provide clear, concise summaries with actionable insights."
+      - key: SOURCES_CONFIG_PATH
+        value: config/sources.yaml
+      - key: MAX_ARTICLES_PER_SOURCE
+        value: "10"
+      - key: SCRAPING_TIMEOUT
+        value: "30"
