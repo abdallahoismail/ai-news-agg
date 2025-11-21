@@ -6,12 +6,60 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
+from docling.document_converter import DocumentConverter
 
 from app.scrapers.base import BaseScraper, ScrapedArticle
 
 
 class WebScraper(BaseScraper):
     """Generic web scraper for extracting article content from websites."""
+
+    def __init__(self):
+        """Initialize WebScraper with docling converter."""
+        super().__init__()
+        self._docling_converter = None
+
+    def convert_url_to_markdown(self, url: str) -> Optional[str]:
+        """
+        Convert web page content to markdown using docling.
+
+        This function uses docling's document converter to fetch and convert
+        web content to markdown format. It provides better structure preservation
+        and handling compared to basic HTML parsing.
+
+        Args:
+            url: The URL of the web page to convert
+
+        Returns:
+            Markdown string of the page content, or None if conversion fails
+
+        Example:
+            >>> scraper = WebScraper()
+            >>> markdown = scraper.convert_url_to_markdown("https://example.com/article")
+            >>> print(markdown)
+        """
+        try:
+            # Lazy initialize docling converter
+            if self._docling_converter is None:
+                self._docling_converter = DocumentConverter()
+
+            print(f"Converting URL to markdown using docling: {url}")
+
+            # Convert the URL to a document
+            result = self._docling_converter.convert(url)
+
+            # Export to markdown
+            markdown_content = result.document.export_to_markdown()
+
+            if not markdown_content or len(markdown_content.strip()) < 100:
+                print(f"Warning: Docling conversion produced minimal content from {url}")
+                return None
+
+            return markdown_content.strip()
+
+        except Exception as e:
+            print(f"Error converting URL to markdown with docling: {e}")
+            return None
 
     def _extract_article_content(self, soup: BeautifulSoup) -> Optional[str]:
         """
@@ -123,26 +171,52 @@ class WebScraper(BaseScraper):
 
         Args:
             source_url: URL of the web page to scrape
-            config: Optional configuration
+            config: Optional configuration with options:
+                - use_docling (bool): If True, use docling for conversion (default: False)
+                - fallback_to_bs4 (bool): If docling fails, fallback to BeautifulSoup (default: True)
 
         Returns:
             List containing a single scraped article (if successful)
         """
-        try:
-            response = self._make_request(source_url)
-            soup = BeautifulSoup(response.content, "html.parser")
+        use_docling = config.get("use_docling", False) if config else False
+        fallback_to_bs4 = config.get("fallback_to_bs4", True) if config else True
 
-            # Extract information
-            title = self._extract_title(soup, source_url)
-            content = self._extract_article_content(soup)
-            published_date = self._extract_published_date(soup)
+        content = None
+        title = None
+        published_date = None
+
+        try:
+            # Try docling first if requested
+            if use_docling:
+                print(f"Using docling to scrape {source_url}")
+                content = self.convert_url_to_markdown(source_url)
+
+                if content:
+                    # For docling, we need to extract title and date separately
+                    response = self._make_request(source_url)
+                    soup = BeautifulSoup(response.content, "html.parser")
+                    title = self._extract_title(soup, source_url)
+                    published_date = self._extract_published_date(soup)
+                elif not fallback_to_bs4:
+                    print(f"Warning: Docling failed and fallback is disabled for {source_url}")
+                    return []
+
+            # Use BeautifulSoup approach if docling not used or failed
+            if not content:
+                print(f"Using BeautifulSoup to scrape {source_url}")
+                response = self._make_request(source_url)
+                soup = BeautifulSoup(response.content, "html.parser")
+
+                title = self._extract_title(soup, source_url)
+                content = self._extract_article_content(soup)
+                published_date = self._extract_published_date(soup)
 
             if not content:
                 print(f"Warning: Could not extract meaningful content from {source_url}")
                 return []
 
             article = ScrapedArticle(
-                title=title,
+                title=title or source_url,
                 url=source_url,
                 content=content,
                 published_date=published_date
