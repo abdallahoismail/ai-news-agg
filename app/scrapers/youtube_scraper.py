@@ -7,8 +7,10 @@ import re
 from googleapiclient.discovery import build
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
+from pydantic import ValidationError
 
 from app.scrapers.base import BaseScraper, ScrapedArticle
+from app.schemas.youtube import YouTubeVideo, YouTubeTranscript
 
 
 class YouTubeScraper(BaseScraper):
@@ -118,7 +120,7 @@ class YouTubeScraper(BaseScraper):
             print(f"Error fetching videos for channel {channel_id}: {e}")
             return []
 
-    def _get_video_transcript(self, video_id: str) -> Optional[str]:
+    def _get_video_transcript(self, video_id: str) -> Optional[YouTubeTranscript]:
         """
         Get transcript for a YouTube video.
 
@@ -126,16 +128,68 @@ class YouTubeScraper(BaseScraper):
             video_id: YouTube video ID
 
         Returns:
-            Transcript text if available, None otherwise
+            YouTubeTranscript model if available, None otherwise
         """
         try:
             fetched_transcript = self.transcript_api.fetch(video_id, languages=["en"])
-            transcript = " ".join([entry.text for entry in fetched_transcript])
-            return transcript
+            transcript_text = " ".join([entry.text for entry in fetched_transcript])
+
+            # Return Pydantic model
+            return YouTubeTranscript(
+                text=transcript_text,
+                language="en"
+            )
         except (TranscriptsDisabled, NoTranscriptFound):
             return None
         except Exception as e:
             print(f"Error fetching transcript for video {video_id}: {e}")
+            return None
+
+    def _parse_video_to_model(self, video_data: dict) -> Optional[YouTubeVideo]:
+        """
+        Parse YouTube API video data into a Pydantic model.
+
+        Args:
+            video_data: Raw video data from YouTube API
+
+        Returns:
+            YouTubeVideo model if parsing successful, None otherwise
+        """
+        try:
+            video_id = video_data["id"]["videoId"]
+            title = video_data["snippet"]["title"]
+            url = f"https://www.youtube.com/watch?v={video_id}"
+            description = video_data["snippet"].get("description", "")
+            channel_id = video_data["snippet"]["channelId"]
+            channel_title = video_data["snippet"].get("channelTitle")
+
+            # Parse published date
+            published_at = datetime.fromisoformat(
+                video_data["snippet"]["publishedAt"].replace("Z", "+00:00")
+            )
+
+            # Get transcript
+            transcript = self._get_video_transcript(video_id)
+
+            # Create and validate Pydantic model
+            video_model = YouTubeVideo(
+                video_id=video_id,
+                title=title,
+                url=url,
+                description=description,
+                published_at=published_at,
+                channel_id=channel_id,
+                channel_title=channel_title,
+                transcript=transcript
+            )
+
+            return video_model
+
+        except (ValidationError, KeyError) as e:
+            print(f"Error parsing video data: {e}")
+            return None
+        except Exception as e:
+            print(f"Unexpected error parsing video: {e}")
             return None
 
     def scrape(
@@ -163,35 +217,25 @@ class YouTubeScraper(BaseScraper):
             print(f"Could not extract channel ID from URL: {source_url}")
             return []
 
-        # Get recent videos
+        # Get recent videos from YouTube API
         videos = self._get_channel_videos(channel_id, max_videos)
 
         articles = []
         for video in videos:
             try:
-                video_id = video["id"]["videoId"]
-                title = video["snippet"]["title"]
-                url = f"https://www.youtube.com/watch?v={video_id}"
+                # Parse video data into Pydantic model (includes validation)
+                video_model = self._parse_video_to_model(video)
 
-                # Parse published date
-                published_date = None
-                if "publishedAt" in video["snippet"]:
-                    published_date = datetime.fromisoformat(
-                        video["snippet"]["publishedAt"].replace("Z", "+00:00")
-                    )
+                if video_model is None:
+                    continue
 
-                # Get transcript
-                transcript = self._get_video_transcript(video_id)
-
-                # Use description as content
-                content = video["snippet"].get("description", "")
-
+                # Convert YouTubeVideo model to ScrapedArticle for compatibility
                 article = ScrapedArticle(
-                    title=title,
-                    url=url,
-                    content=content,
-                    transcript=transcript,
-                    published_date=published_date,
+                    title=video_model.title,
+                    url=video_model.url,
+                    content=video_model.description,
+                    transcript=video_model.transcript.text if video_model.transcript else None,
+                    published_date=video_model.published_at,
                 )
 
                 articles.append(article)
